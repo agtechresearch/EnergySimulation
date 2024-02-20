@@ -8,14 +8,27 @@ import subprocess
 import pandas as pd
 import numpy as np
 
+#수정할 변수들
+SM = 9 #시작월
+SD = 1 #시작일
+EM = 9 #종료월
+ED = 5 #종료일
+TS = 4 #타임스텝(결과출력주기)  1: 시간별, 2, 30분별, 4: 15분별, 6: 10분별
 
-SM = 9
-SD = 1
-EM = 9
-ED = 5
-TS = 4 # 1: 시간별, 2, 30분별, 4: 15분별, 6: 10분별
+#파일들
+weather_file = '/home/egtechlab/EnergySimulation/KOR_KW_Taebaek.epw' #웨더파일
 
-with open("C:\mindgnd\mindsgnd2.idf", 'r') as file:   #idf가 있는 패스
+#paths
+eplus_path = '/usr/local/EnergyPlus-8-7-0/energyplus-8.7.0'  #에너지플러스 exe 파일위치
+idf_base_path="/home/egtechlab/EnergySimulation/mindsgnd2.idf"
+idf_custom_path="/home/egtechlab/EnergySimulation/mindsgnd2.idf"
+eplus_file = ('/home/egtechlab/EnergySimulation/mindsgnd2.idf')   #수정된 에너지플러스파일
+out_files = '/home/egtechlab/EnergySimulation/outputs'  # 아웃풋 드랍 할 위치
+
+out_name = 'mindgnd2' #outputfile이름기반
+
+
+with open(idf_base_path, 'r') as file:   #idf가 있는 패스
         data = file.readlines()
 #        line=data[178]
         data[39] = '  %s;    !new time steps \n'%TS    # 아웃풋 출력주기
@@ -24,21 +37,17 @@ with open("C:\mindgnd\mindsgnd2.idf", 'r') as file:   #idf가 있는 패스
         data[58] = '  %s,    !new end month \n'%EM    #시뮬레이션 끝내고 싶은 종료 월
         data[59] = '  %s,    !new end day \n'%ED    #시뮬레이션 끝내고 싶은 종료 일      
   
-with open("C:\mindgnd\mindsgnd2.idf", 'w') as file:  #
+with open(idf_custom_path, 'w') as file:  #
         file.writelines(data)
         file.close()
-        eplus_path = 'C:\EnergyPlusV8-7-0\energyplus'  #에너지플러스 exe 파일위치
-        eplus_file = ('C:\mindgnd\mindsgnd2.idf')   #신규작성된 에너지플러스파일
-        weather_file = 'C:\mindgnd\KOR_KW_Taebaek.epw' #웨더파일
-        out_files = 'C:\mindgnd'  # 아웃풋 드랍 할 위치
-        out_name = 'mindgnd2' #항상확장자는 동일하게
+        
         # df = subprocess.call([eplus_path, "-w", weather_file, "-d", out_files, "-p", out_name, eplus_file])
         df = subprocess.Popen([eplus_path, "-w", weather_file, "-d", out_files, "-p", out_name, "-r", eplus_file], stdout=subprocess.PIPE, shell =False)
         output, err = df.communicate()
         #print (output.decode('utf-8'))
         #if not err is None:
                 #print(err.decode('utf-8'))
-        depout = pd.read_csv("C:\mindgnd\mindgnd2out.csv") #결과값 읽기
+        depout = pd.read_csv("/home/egtechlab/EnergySimulation/outputs/"+out_name+"out.csv") #결과값 읽기
         
         #온실위치 C_Bot, B_bot, A_bot, D_bot
         #출력값
