@@ -23,7 +23,7 @@ eplus_path = '/usr/local/EnergyPlus-8-7-0/energyplus-8.7.0'  #에너지플러스
 idf_base_path="/home/egtechlab/EnergySimulation/mindsgnd2.idf"
 idf_custom_path="/home/egtechlab/EnergySimulation/mindsgnd2.idf"
 eplus_file = ('/home/egtechlab/EnergySimulation/mindsgnd2.idf')   #수정된 에너지플러스파일
-out_files = '/home/egtechlab/EnergySimulation/outputs'  # 아웃풋 드랍 할 위치
+out_files = '/home/egtechlab/EnergySimulation/'  # 아웃풋 드랍 할 위치
 
 out_name = 'mindgnd2' #outputfile이름기반
 
@@ -47,7 +47,7 @@ with open(idf_custom_path, 'w') as file:  #
         #print (output.decode('utf-8'))
         #if not err is None:
                 #print(err.decode('utf-8'))
-        depout = pd.read_csv("/home/egtechlab/EnergySimulation/outputs/"+out_name+"out.csv") #결과값 읽기
+        depout = pd.read_csv("/home/egtechlab/EnergySimulation/"+out_name+"out.csv") #결과값 읽기
         
         #온실위치 C_Bot, B_bot, A_bot, D_bot
         #출력값
