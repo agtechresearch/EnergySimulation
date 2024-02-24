@@ -15,6 +15,13 @@ EM = 9 #종료월
 ED = 5 #종료일
 TS = 4 #타임스텝(결과출력주기)  1: 시간별, 2, 30분별, 4: 15분별, 6: 10분별
 
+CD_Heating_set_tempUnt7=10 # 0시-7시 Heating setpoint
+CD_Heating_set_tempUnt17=10 # 7시-17시 Heating setpoint
+CD_Heating_set_tempUnt24=10 # 17시-24시 Heating setpoint
+CD_Cooling_set_tempUnt7=25 # 0시-7시 Cooling setpoint
+CD_Cooling_set_tempUnt20=30 # 7시-20시 Cooling setpoint
+CD_Cooling_set_tempUnt24=15# 20시-24시 Cooling setpoint
+
 #파일들
 weather_file = '/home/egtechlab/EnergySimulation/KOR_KW_Taebaek.epw' #웨더파일
 
@@ -36,6 +43,20 @@ with open(idf_base_path, 'r') as file:   #idf가 있는 패스
         data[57] = '  %s,    !new start day \n'%SD    #시뮬레이션 하고 싶은 시작일
         data[58] = '  %s,    !new end month \n'%EM    #시뮬레이션 끝내고 싶은 종료 월
         data[59] = '  %s,    !new end day \n'%ED    #시뮬레이션 끝내고 싶은 종료 일      
+
+        # C & D온실 Heating setpoints
+        data[511]= '     %s,                     !- Field 4\n'%CD_Heating_set_tempUnt7 #C & D온실 자정부터 7시까지 Setpoint
+        data[513]= '     %s,                     !- Field 6\n'%CD_Heating_set_tempUnt17 #C & D온실 7시부터 17시까지 Setpoint
+        data[515]= '     %s;                     !- Field 8\n'%CD_Heating_set_tempUnt24 #C & D온실 17시부터 24시까지 Setpoint
+
+        # C & D온실 Cooling setpoints
+        data[523]= '     %s,                     !- Field 4\n'%CD_Cooling_set_tempUnt7 #C & D온실 자정부터 7시까지 Setpoint
+        data[525]= '     %s,                     !- Field 6\n'%CD_Cooling_set_tempUnt20 #C & D온실 7시부터 20시까지 Setpoint
+        data[527]= '     %s;                     !- Field 8\n'%CD_Cooling_set_tempUnt24 #C & D온실 20시부터 24시까지 Setpoint  
+
+        
+
+
   
 with open(idf_custom_path, 'w') as file:  #
         file.writelines(data)
