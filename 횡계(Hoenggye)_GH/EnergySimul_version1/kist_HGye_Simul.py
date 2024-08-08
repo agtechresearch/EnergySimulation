@@ -45,11 +45,11 @@ weather_file = "/home/agtech_eplus/eplus_KIST_GH/KOR_KW_Daegwallyeong.471000_TMY
 
 eplus_path = "/usr/local/EnergyPlus-23-1-0/energyplus-23.1.0"
 idf_base_path = "/home/agtech_eplus/eplus_KIST_GH/Validation_ch_ing_2.idf"
-idf_custom_path = "/home/agtech_eplus/eplus_KIST_GH/test.idf"
-eplus_file = "/home/agtech_eplus/eplus_KIST_GH/test.idf"
+idf_custom_path = "/home/agtech_eplus/eplus_KIST_GH/trial_one.idf"
+eplus_file = "/home/agtech_eplus/eplus_KIST_GH/trial_one.idf"
 out_files = "/home/agtech_eplus/eplus_KIST_GH/"
 
-out_name = 'test'
+out_name = 'trial_one'
 
 with open(idf_base_path, 'r') as file:   #idf가 있는 패스
         data = file.readlines()
@@ -144,4 +144,123 @@ with open(idf_custom_path, 'w') as file:  #
         # result_output = pd.DataFrame(y_out)
         # result_output.to_csv('eplus_case1.csv', index=False)
 
+        # 공백 제거 및 형식 확인
+        depout['Date/Time'] = depout['Date/Time'].str.strip()
+
+        # Filter the rows
+        filter_time = '01/01  00:10:00'
+        filter_idx = depout[depout['Date/Time'] == filter_time].index
+        filter_idx
+
+        # drop
+        first_idx = filter_idx[0]
+        filtered_df = depout.loc[first_idx:]
+        filtered_df.reset_index(drop=True,inplace=True)
+
+        ## 환경값과 에너지값 분리 전 컬럼 이름 정의하고 바꾸기
+        """
+        환경값(Timestep)
+        * Environment:Site Outdoor Air Drybulb Temperature [C] - Out_Temp
+        * Environment:Site Outdoor Air Relative Humidity [%] - Out_Humid
+        * Environment:Site Wind Speed [m/s] - WindSP
+        * Environment:Site Diffuse Solar Radiation Rate per Area [W/m2] - Diffuse_Radiation
+        * Environment:Site Direct Solar Radiation Rate per Area [W/m2] - Direct_Radiation
+        * THERMAL ZONE BOTTOM:Zone Air Temperature [C] - In_Temp
+        * THERMAL ZONE BOTTOM:Zone Air Relative Humidity [%] - In_Humid
+        * THERMAL ZONE TOP:Zone Air Temperature [C] - x
+        * THERMAL ZONE TOP:Zone Air Relative Humidity [%] - x
+
+        에너지값(Hourly)
+        * EXHAUST FAN 1~7:Fan Electricity Energy [J] - Fan_elecE
+        * FOG SYSTEM:Water Use Equipment Heating Energy [J] - x(여기서는 0만 나옴, 확인 후 값이 NaN이거나 0이면 지우라고 해야할 듯)
+        * Whole Building:Facility Total Electricity Demand Rate [W] - 전력수요, Tot_Elec_Demand
+        * HW BOILER:Boiler Heating Energy [J] - Boiler_HeatE
+        * VAR SPD PUMP:Pump Electricity Energy [J] - x
+
+        Meter(Monthly) - 이거는 meter.csv에 나와있으니 삭제?
+        * Electricity:Facility [J](Monthly)
+        * FuelOilNo2:Facility [J](Monthly)
+        * EnergyTransfer:Facility [J](Monthly)
+        """
+        # 불필요한 컬럼 삭제
+        drop_list = filtered_df.columns[[7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20, 21, 22, 23]]
+        filtered_df = filtered_df.drop(drop_list,axis=1)
+
+        # 이름 바꾸기
+        filtered_df.columns = ['date','Out_Temp','Out_Humid','WindSP','Diffuse_Radiation','Direct_Radiation','Fan_elecE','Tot_Elec_Demand','Boiler_HeatE']
+        
+        # 환경값 분리
+        envio = filtered_df.iloc[:,0:6]
+        envio.to_csv('trial_one_envdata.csv', index=False)
+
 # print(result_output)
+
+### 에너지 정보 출력
+def find_index(data, report_name, energy_type): # 원하는 energy_type의 Monthly report를 찾을 수 있도록 인덱스 제공
+    for idx, item in enumerate(data):
+        if item[0] == report_name and any(energy_type in sublist for sublist in item[1]):
+            return idx
+    return -1
+
+report_name = 'Custom Monthly Report'
+energy_types = ['FAN ELECTRICITY ENERGY [kWh]','BASEBOARD TOTAL HEATING ENERGY [kWh]','BOILER HEATING ENERGY [kWh]']
+
+from eppy.results import readhtml
+import pprint
+pp = pprint.PrettyPrinter()
+
+fname = "/home/agtech_eplus/eplus_KIST_GH/trial_onetbl.htm" # output인 html 파일의 table을 읽을 것임
+html_doc = open(fname, 'r').read()
+htables = readhtml.titletable(html_doc)
+
+results = {}
+for energy_type in energy_types:
+    index = find_index(htables, report_name, energy_type)
+    if index != -1: # find_index에서 값을 찾을 수 없으면 -1을 반환하므로
+        results[energy_type] = htables[index]
+        firstitem = htables[index]
+
+# 각각의 monthly report 추출
+baseboard_heatE = results['BASEBOARD TOTAL HEATING ENERGY [kWh]']
+boiler_heatE = results['BOILER HEATING ENERGY [kWh]']
+fan_elecE = results['FAN ELECTRICITY ENERGY [kWh]']
+
+def Period_Energy_value(data_list, target_value): # report에서 에너지 값 가져오기
+    for index, row in enumerate(data_list):
+        if row[0] == target_value:
+            return data_list[index][1]
+        
+data_lists = [baseboard_heatE[1], boiler_heatE[1], fan_elecE[1]]
+target_value = 'Annual Sum or Average'
+
+energy_results = []
+for data_list in data_lists:
+    energy_result = Period_Energy_value(data_list, target_value)
+    energy_results.append(energy_result)
+
+print(f'Sum or Average of BaseBoeard Heat Energy:{energy_results[0]}')
+print(f'Sum or Average of Boiler Heat Energy:{energy_results[1]}')
+print(f'Sum or Average of Fan Electricity Heat Energy:{energy_results[2]}')
+
+# Annual Building Utility Performance Summary
+for title, table in htables:
+    if title == "Site and Source Energy":
+        print(f'Total Use Energy(kWh):{table[1][1]}')
+
+# End Uses
+columns = htables[3][1][0]
+data = htables[3][1][1:]
+
+End_uses_table = pd.DataFrame(data,columns=columns)
+End_uses_table.drop(index=14,inplace=True)
+End_uses_table.set_index('', inplace=True)
+
+idx_list = list(End_uses_table.index)
+col_list = list(End_uses_table.columns)
+
+for i, idx in enumerate(idx_list):
+    for j, col in enumerate(col_list):
+        if End_uses_table.loc[idx, col] != 0.0:
+            print(f"Uses: {col} - {idx}:", End_uses_table.loc[idx, col])
+        
+### 다음으로는 에너지 출력값들을 모아 따로 저장하도록 할 것
