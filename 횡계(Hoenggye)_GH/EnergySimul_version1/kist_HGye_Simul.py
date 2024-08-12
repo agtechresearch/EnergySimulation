@@ -183,15 +183,18 @@ with open(idf_custom_path, 'w') as file:  #
         * EnergyTransfer:Facility [J](Monthly)
         """
         # 불필요한 컬럼 삭제
-        drop_list = filtered_df.columns[[7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20, 21, 22, 23]]
+        drop_list = filtered_df.columns[[7, 8, 9, 10, 11, 12, 15, 16, 17, 20, 21, 22, 23]]
         filtered_df = filtered_df.drop(drop_list,axis=1)
 
         # 이름 바꾸기
         filtered_df.columns = ['date','Out_Temp','Out_Humid','WindSP','Diffuse_Radiation','Direct_Radiation','Fan_elecE','Tot_Elec_Demand','Boiler_HeatE']
         
         # 환경값 분리
-        envio = filtered_df.iloc[:,0:6]
-        envio.to_csv('trial_one_envdata.csv', index=False)
+        envio = filtered_df.iloc[:,[0,1,2,3,4,5,7,8]]
+        envio["Radiation"] = envio['Diffuse_Radiation'] + envio['Direct_Radiation']
+        envio = envio.drop(columns=['Diffuse_Radiation','Direct_Radiation'])
+
+        envio.to_csv('trial_'+out_name+'_envdata.csv', index=False)
 
 # print(result_output)
 
@@ -238,14 +241,32 @@ for data_list in data_lists:
     energy_result = Period_Energy_value(data_list, target_value)
     energy_results.append(energy_result)
 
-print(f'Sum or Average of BaseBoeard Heat Energy:{energy_results[0]}')
-print(f'Sum or Average of Boiler Heat Energy:{energy_results[1]}')
-print(f'Sum or Average of Fan Electricity Heat Energy:{energy_results[2]}')
+# print(f'Sum or Average of BaseBoeard Heat Energy:{energy_results[0]}')
+# print(f'Sum or Average of Boiler Heat Energy:{energy_results[1]}')
+# print(f'Sum or Average of Fan Electricity Heat Energy:{energy_results[2]}')
 
 # Annual Building Utility Performance Summary
 for title, table in htables:
     if title == "Site and Source Energy":
-        print(f'Total Use Energy(kWh):{table[1][1]}')
+        Tot_energy = table[1][1]
+
+# 에너지결과값 저장하는 데이터프레임
+Energy_data = {
+    'Description':[
+        'Sum or Average of BaseBoeard Heat Energy(kWh)',
+        'Sum or Average of Boiler Heat Energy(kWh)',
+        'Sum or Average of Fan Electricity Heat Energy(kWh)',
+        'Total Use Energy(kWh)',
+    ],
+    'Value':[
+        energy_results[0],
+        energy_results[1],
+        energy_results[2],
+        Tot_energy
+    ]
+}
+
+Energy_df = pd.DataFrame(Energy_data)
 
 # End Uses
 columns = htables[3][1][0]
@@ -258,9 +279,17 @@ End_uses_table.set_index('', inplace=True)
 idx_list = list(End_uses_table.index)
 col_list = list(End_uses_table.columns)
 
+additional_data = []
 for i, idx in enumerate(idx_list):
     for j, col in enumerate(col_list):
         if End_uses_table.loc[idx, col] != 0.0:
-            print(f"Uses: {col} - {idx}:", End_uses_table.loc[idx, col])
-        
-### 다음으로는 에너지 출력값들을 모아 따로 저장하도록 할 것
+            additional_data.append({
+                'Description':f"Uses: {col} - {idx}:",
+                'Value': End_uses_table.loc[idx, col]
+            })
+
+add_df = pd.DataFrame(additional_data)
+Energy_df = pd.concat([Energy_df, add_df], ignore_index=True)
+
+# 최종 에너지값 저장
+Energy_df.to_csv('trial_'+out_name+'_envdata.csv', index=False)
