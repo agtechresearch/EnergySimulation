@@ -8,7 +8,7 @@ SM = 1 #시작월
 SD = 1 #시작일
 EM = 6 #종료월
 ED = 30 #종료일
-TS = 6 #타임스텝(결과출력주기)  1: 시간별, 2, 30분별, 4: 15분별, 6: 10분별
+TS = 1 #타임스텝(결과출력주기)  1: 시간별, 2, 30분별, 4: 15분별, 6: 10분별
 
 ## 월마다 바뀌는 일출/일몰 및 setpoint 값 적용 ##
 # 각 월별 일출/일몰 시간
@@ -49,7 +49,7 @@ idf_custom_path = "/home/agtech_eplus/eplus_KIST_GH/trial_one.idf"
 eplus_file = "/home/agtech_eplus/eplus_KIST_GH/trial_one.idf"
 out_files = "/home/agtech_eplus/eplus_KIST_GH/"
 
-out_name = 'trial_one'
+out_name = 'trial_time60'
 
 with open(idf_base_path, 'r') as file:   #idf가 있는 패스
         data = file.readlines()
@@ -147,10 +147,16 @@ with open(idf_custom_path, 'w') as file:  #
         # 공백 제거 및 형식 확인
         depout['Date/Time'] = depout['Date/Time'].str.strip()
 
-        # Filter the rows
-        filter_time = '01/01  00:10:00'
-        filter_idx = depout[depout['Date/Time'] == filter_time].index
-        filter_idx
+        # timestep에 따른 filter 걸기
+        time_filter = {
+                1: '01/01  01:00:00',
+                2: '01/01  00:30:00',
+                4: '01/01  00:15:00',
+                6: '01/01  00:10:00'
+        }
+
+        filter_time = time_filter.get(TS, 'None') 
+        filter_idx = df[df['Date/Time'] == filter_time].index
 
         # drop
         first_idx = filter_idx[0]
@@ -187,7 +193,7 @@ with open(idf_custom_path, 'w') as file:  #
         filtered_df = filtered_df.drop(drop_list,axis=1)
 
         # 이름 바꾸기
-        filtered_df.columns = ['date','Out_Temp','Out_Humid','WindSP','Diffuse_Radiation','Direct_Radiation','Fan_elecE','Tot_Elec_Demand','Boiler_HeatE']
+        filtered_df.columns = ['date','Out_Temp','Out_Humid','WindSP','Diffuse_Radiation','Direct_Radiation','Fan_elecE','In_Temp','In_Humid','Tot_Elec_Demand','Boiler_HeatE']
         
         # 환경값 분리
         envio = filtered_df.iloc[:,[0,1,2,3,4,5,7,8]]
@@ -212,7 +218,7 @@ from eppy.results import readhtml
 import pprint
 pp = pprint.PrettyPrinter()
 
-fname = "/home/agtech_eplus/eplus_KIST_GH/trial_onetbl.htm" # output인 html 파일의 table을 읽을 것임
+fname = "/home/agtech_eplus/eplus_KIST_GH/"+out_name+"tbl.htm" # output인 html 파일의 table을 읽을 것임
 html_doc = open(fname, 'r').read()
 htables = readhtml.titletable(html_doc)
 
@@ -292,4 +298,4 @@ add_df = pd.DataFrame(additional_data)
 Energy_df = pd.concat([Energy_df, add_df], ignore_index=True)
 
 # 최종 에너지값 저장
-Energy_df.to_csv('trial_'+out_name+'_envdata.csv', index=False)
+Energy_df.to_csv('trial_'+out_name+'_energy.csv', index=False)
