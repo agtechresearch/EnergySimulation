@@ -8,7 +8,7 @@ SM = 1 #시작월
 SD = 1 #시작일
 EM = 6 #종료월
 ED = 30 #종료일
-TS = 1 #타임스텝(결과출력주기)  1: 시간별, 2, 30분별, 4: 15분별, 6: 10분별
+TS = 6 #타임스텝(결과출력주기)  1: 시간별, 2, 30분별, 4: 15분별, 6: 10분별
 
 ## 월마다 바뀌는 일출/일몰 및 setpoint 값 적용 ##
 # 각 월별 일출/일몰 시간
@@ -49,7 +49,7 @@ idf_custom_path = "/home/agtech_eplus/eplus_KIST_GH/trial_one.idf"
 eplus_file = "/home/agtech_eplus/eplus_KIST_GH/trial_one.idf"
 out_files = "/home/agtech_eplus/eplus_KIST_GH/"
 
-out_name = 'trial_time60'
+out_name = 'add+R'
 
 with open(idf_base_path, 'r') as file:   #idf가 있는 패스
         data = file.readlines()
@@ -156,7 +156,7 @@ with open(idf_custom_path, 'w') as file:  #
         }
 
         filter_time = time_filter.get(TS, 'None') 
-        filter_idx = df[df['Date/Time'] == filter_time].index
+        filter_idx = depout[depout['Date/Time'] == filter_time].index
 
         # drop
         first_idx = filter_idx[0]
@@ -175,6 +175,8 @@ with open(idf_custom_path, 'w') as file:  #
         * THERMAL ZONE BOTTOM:Zone Air Relative Humidity [%] - In_Humid
         * THERMAL ZONE TOP:Zone Air Temperature [C] - x
         * THERMAL ZONE TOP:Zone Air Relative Humidity [%] - x
+        * SPACE TOP:Zone Windows Total Transmitted Solar Radiation Rate [W](TimeStep) - bottom을 살리기로, 바꿀수 있음. 열 7
+        * SPACE BOTTOM:Zone Windows Total Transmitted Solar Radiation Rate [W](TimeStep), 열 6 - In_Radiation
 
         에너지값(Hourly)
         * EXHAUST FAN 1~7:Fan Electricity Energy [J] - Fan_elecE
@@ -189,14 +191,14 @@ with open(idf_custom_path, 'w') as file:  #
         * EnergyTransfer:Facility [J](Monthly)
         """
         # 불필요한 컬럼 삭제
-        drop_list = filtered_df.columns[[7, 8, 9, 10, 11, 12, 15, 16, 17, 20, 21, 22, 23]]
+        drop_list = filtered_df.columns[[7, 9, 10, 11, 12, 13, 14, 17, 18, 19, 22, 23, 24, 25]]
         filtered_df = filtered_df.drop(drop_list,axis=1)
 
         # 이름 바꾸기
-        filtered_df.columns = ['date','Out_Temp','Out_Humid','WindSP','Diffuse_Radiation','Direct_Radiation','Fan_elecE','In_Temp','In_Humid','Tot_Elec_Demand','Boiler_HeatE']
+        filtered_df.columns = ['date','Out_Temp','Out_Humid','WindSP','Diffuse_Radiation','Direct_Radiation','In_Radiation','Fan_elecE','In_Temp','In_Humid','Tot_Elec_Demand','Boiler_HeatE']
         
         # 환경값 분리
-        envio = filtered_df.iloc[:,[0,1,2,3,4,5,7,8]]
+        envio = filtered_df.iloc[:,[0,1,2,3,4,5,6,8,9]]
         envio["Radiation"] = envio['Diffuse_Radiation'] + envio['Direct_Radiation']
         envio = envio.drop(columns=['Diffuse_Radiation','Direct_Radiation'])
 

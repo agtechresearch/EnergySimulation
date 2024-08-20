@@ -11894,6 +11894,12 @@ Output:Table:Monthly,
     Boiler Heating Energy,   !- Variable or Meter 1 Name
     SumOrAverage;            !- Aggregation Type for Variable or Meter 1
 
+Output:Table:Monthly,
+    Energy Consumption 4,    !- Name
+    2,                       !- Digits After Decimal
+    TotalEnergy:Facility,    !- Variable or Meter 1 Name
+    SumOrAverage;            !- Aggregation Type for Variable or Meter 1
+
 
 !-   ===========  ALL OBJECTS IN CLASS: OUTPUTCONTROL:TABLE:STYLE ===========
 
@@ -11911,24 +11917,25 @@ OutputControl:ReportingTolerances,
 
 !-   ===========  ALL OBJECTS IN CLASS: OUTPUT:VARIABLE ===========
 
-Output:Variable,*,Zone Air Temperature,Hourly;
-Output:Variable,*,Zone Air Relative Humidity,Hourly;
-Output:Variable,*,Site Outdoor Air Drybulb Temperature,Hourly;
-Output:Variable,*,Site Outdoor Air Relative Humidity,Hourly;
+Output:Variable,*,Zone Air Temperature,Timestep;
+Output:Variable,*,Zone Air Relative Humidity,Timestep;
+Output:Variable,*,Site Outdoor Air Drybulb Temperature,Timestep;
+Output:Variable,*,Site Outdoor Air Relative Humidity,Timestep;
 Output:Variable,*,Fan Electricity Energy,Hourly;
 Output:Variable,*,Facility Total Electricity Demand Rate,Hourly;
 Output:Variable,*,Boiler Heating Energy,Hourly;
 Output:Variable,*,Pump Electricity Energy,Hourly;
 Output:Variable,*,Water Use Equipment Heating Energy,Hourly;
-Output:Variable,*,Zone Ideal Loads Zone Total Heating Energy,Hourly;
-Output:Variable,*,Zone Ideal Loads Zone Total Cooling Energy,Hourly;
+Output:Variable,*,Site Diffuse Solar Radiation Rate per Area,Timestep;
+Output:Variable,*,Site Direct Solar Radiation Rate per Area,Timestep;
+Output:Variable,*,Site Wind Speed,Timestep;
+Output:Variable,*,Zone Windows Total Transmitted Solar Radiation Rate,Timestep;
 
 !-   ===========  ALL OBJECTS IN CLASS: OUTPUT:METER ===========
 
-Output:Meter,Electricity:Facility,Hourly;
-Output:Meter,FuelOilNo2:Facility,Hourly;
-Output:Meter,WaterSystems:Facility,Hourly;
-Output:Meter,TotalEnergy:Facility,Hourly;
+Output:Meter,Electricity:Facility,Monthly;
+Output:Meter,FuelOilNo2:Facility,Monthly;
+Output:Meter,EnergyTransfer:Facility,Monthly;
 
 !-   ===========  ALL OBJECTS IN CLASS: OUTPUT:JSON ===========
 
