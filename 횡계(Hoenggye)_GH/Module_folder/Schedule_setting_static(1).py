@@ -2,18 +2,22 @@ import pandas as pd
 from datetime import datetime, timedelta
 import subprocess
 
+"""
+* (Scenario 1) 난방온도 15도, 환기온도 35도에 고정
+"""
+
 # 각 월별 일출/일몰 시간
 sunrise_times = {1: '7:30', 2: '7:00', 3: '6:30', 4: '6:00', 5: '5:30', 6: '5:00'}
 sunset_times = {1: '17:30', 2: '18:00', 3: '18:30', 4: '19:00', 5: '19:30', 6: '20:00'}
 
-# month to str
+# month(숫자)를 월 별 약어로 변환
 def MonthToName(mon):
         month_names = ['Jan','Feb','Mar','Apr','May','Jun']
         return month_names[mon - 1]
 
-# time to datetime
+# time_str to datetime(시간끼리의 계산을 위해서임)
 def TimeToDatetime(time_str):
-        return datetime.strptime(time_str,"%H:%M")
+        return datetime.strptime(time_str,"%H:%M") # idf 시간형식에 맞춰서
 
 # datetime to str
 def DatetimeToStr(time_obj):
@@ -27,7 +31,7 @@ def CalculateDatetime(time_str, hours):
 
 ### idf 수정 구간
 def write_idf_setpoints(idf_base_path, idf_custom_path, SM, SD, EM, ED, TS):
-       with open(idf_base_path, 'r') as file:   #idf가 있는 패스
+       with open(idf_base_path, 'r') as file:   #idf 위치
         data = file.readlines()
 #        line=data[178]
         data[78] = 'Timestep,%s; \n'%TS    # 아웃풋 출력주기
@@ -48,13 +52,13 @@ def write_idf_setpoints(idf_base_path, idf_custom_path, SM, SD, EM, ED, TS):
                      'setpoint': setpoint
                })
 
-               Modify_ScheduleDay(f"Schedule Day 4_{month_end},", setpoint_df,data)
-               Modify_ScheduleDay(f"Schedule Day 7_{month_end},", setpoint_df,data)
+               Modify_ScheduleDay(f"Schedule Day 4_{month_end},", setpoint_df,data) # heating
+               Modify_ScheduleDay(f"Schedule Day 7_{month_end},", setpoint_df,data) # shading
                # Modify_ScheduleDay(f"Humid Setpoint Schedule_{month_end},", setpoint_df,data)
-               Modify_ScheduleDay(f"VentCool_{month_end},", setpoint_df,data)
-               Modify_ScheduleDay(f"Schedule Day 2_{month_end},", setpoint_df,data)
+               # Modify_ScheduleDay(f"VentCool_{month_end},", setpoint_df,data) 
+               Modify_ScheduleDay(f"Schedule Day 2_{month_end},", setpoint_df,data) # fog
 
-        AirflowNetwork_setpoints(data, "Thermal Zone Top", 0.2, 7, 30)
+        AirflowNetwork_setpoints(data, "Thermal Zone Top", 0.2, 7, 30) # venting
 
         with open(idf_custom_path, 'w') as file:
                file.writelines(data)
@@ -62,41 +66,38 @@ def write_idf_setpoints(idf_base_path, idf_custom_path, SM, SD, EM, ED, TS):
 
 
 def month_schedule_setpoints(mon, sunrise, sunset): # 각 월별 setpoint와 시간대 구간을 설정하는 함수
+    '''
+    Output: setpoint_data[mon], times_data[mon]
+    '''
     # 순서[list_index]: heating[0] - shading[1] - humid[2] - venting[3] - fog[4]
+    # heating과 venting을 사용, humid는 설정바꿔도 결과에 차이 없었음(안씀)
     setpoint_data = {
-          1: [['15.0','16.0','16.0','16.0','16.0','15.0'],['0','1','0'],['87.3','87.5','85.5','80.0','86.5','88.6','87.3'],['28.0','28.0','30.0','30.0','30.0','30.0'],['1']],
-          2: [['15.0','16.0','16.0','16.0','16.0','15.0'],['0','1','0'],['87.3','87.5','85.5','80.0','86.5','88.6','87.3'],['28.0','28.0','30.0','30.0','30.0','30.0'],['1']],
-          3: [['13.5','14.0','17.0','23.0','27.0','22.0','16.0','13.5','13.5','13.5'],['0','1','0'],['88.6','89.6','81.0','68.7','78.7','85.3','88.6'],['17.0','22.0','24.0','28.0','30.0','26.0','23.0','18.0','17.0','17.0'],['1']],
-          4: [['12.5','12.5','15.0','22.0','26.0','18.0','13.5','12.5','12.5','12.5'],['0','1','0'],['88.6','89.6','81.0','68.7','78.7','85.3','88.6'],['17.0','22.0','24.0','28.0','30.0','24.0','20.0','18.0','17.0','17.0'],['1']],
-          5: [['14.0','16.0','16.0','15.0','14.0','13.0','12.0','14.0','14.0'],['0','1','0'],['88.6','89.6','81.0','68.7','78.7','85.3','88.6'],['18.0','22.0','24.0','26.0','28.0','25.0','18.0','18.0','18.0'],['1']],
-          6: [['13.0','17.0','17.0','15.0','13.0','11.0','10.0','13.0'],['0','1','0'],['90.6','92.5','80.4','67.1','75.8','85.3','90.6'],['16.0','22.0','24.6','26.0','29.0','26.0','16.0','16.0'],['1']],
+          1: [['15.0'],['0','1','0'],['87.3','87.5','85.5','80.0','86.5','88.6','87.3'],['35.0'],['1']],
+          2: [['15.0'],['0','1','0'],['87.3','87.5','85.5','80.0','86.5','88.6','87.3'],['35.0'],['1']],
+          3: [['15.0'],['0','1','0'],['88.6','89.6','81.0','68.7','78.7','85.3','88.6'],['35.0'],['1']],
+          4: [['15.0'],['0','1','0'],['88.6','89.6','81.0','68.7','78.7','85.3','88.6'],['35.0'],['1']],
+          5: [['15.0'],['0','1','0'],['88.6','89.6','81.0','68.7','78.7','85.3','88.6'],['35.0'],['1']],
+          6: [['15.0'],['0','1','0'],['90.6','92.5','80.4','67.1','75.8','85.3','90.6'],['35.0'],['1']],
     }
     times_data = {
-          1: [['12:00',CalculateDatetime(sunset,2),sunset,CalculateDatetime(sunset,-1),CalculateDatetime(sunset,-2),'24:00'],[sunrise,sunset,'24:00']
-              ,[CalculateDatetime(sunrise,2),sunrise,'12:00',CalculateDatetime(sunset,2),sunset,CalculateDatetime(sunset,-2),'24:00']
-              ,['12:00',CalculateDatetime(sunset,2),sunset,CalculateDatetime(sunset,-1),CalculateDatetime(sunset,-2),'24:00'],['24:00']],
-          2: [['12:00',CalculateDatetime(sunset,2),sunset,CalculateDatetime(sunset,-1),CalculateDatetime(sunset,-2),'24:00'],[sunrise,sunset,'24:00']
-              ,[CalculateDatetime(sunrise,2),sunrise,'12:00',CalculateDatetime(sunset,2),sunset,CalculateDatetime(sunset,-2),'24:00']
-              ,['12:00',CalculateDatetime(sunset,2),sunset,CalculateDatetime(sunset,-1),CalculateDatetime(sunset,-2),'24:00'],['24:00']],
-          3: [[CalculateDatetime(sunrise,1),sunrise,CalculateDatetime(sunrise,-2),'10:00',CalculateDatetime(sunset,4),CalculateDatetime(sunset,0.5),CalculateDatetime(sunset,-0.5),CalculateDatetime(sunset,-2),CalculateDatetime(sunset,-4),'24:00']
-              ,[sunrise,sunset,'24:00'],[CalculateDatetime(sunrise,2),sunrise,'12:00',CalculateDatetime(sunset,2),sunset,CalculateDatetime(sunset,-2),'24:00']
-              ,[CalculateDatetime(sunrise,1),sunrise,CalculateDatetime(sunrise,-2),'10:00',CalculateDatetime(sunset,4),CalculateDatetime(sunset,0.5),CalculateDatetime(sunset,-0.5),CalculateDatetime(sunset,-2),CalculateDatetime(sunset,-4),'24:00'],['24:00']],
-          4: [[CalculateDatetime(sunrise,1),sunrise,CalculateDatetime(sunrise,-2),'10:00',CalculateDatetime(sunset,4),CalculateDatetime(sunset,0.5),CalculateDatetime(sunset,-0.5),CalculateDatetime(sunset,-2),CalculateDatetime(sunset,-4),'24:00']
-              ,[sunrise,sunset,'24:00'],[CalculateDatetime(sunrise,2),sunrise,'12:00',CalculateDatetime(sunset,2),sunset,CalculateDatetime(sunset,-2),'24:00']
-              ,[CalculateDatetime(sunrise,1),sunrise,CalculateDatetime(sunrise,-2),'10:00',CalculateDatetime(sunset,4),CalculateDatetime(sunset,0.5),CalculateDatetime(sunset,-0.5),CalculateDatetime(sunset,-2),CalculateDatetime(sunset,-4),'24:00'],['24:00']],
-          5: [[CalculateDatetime(sunrise,1),CalculateDatetime(sunrise,-1),'10:00','12:00',CalculateDatetime(sunset,4),CalculateDatetime(sunset,0.5),CalculateDatetime(sunset,-2),CalculateDatetime(sunset,-4),'24:00']
-              ,[sunrise,sunset,'24:00'],[CalculateDatetime(sunrise,2),sunrise,'12:00',CalculateDatetime(sunset,2),sunset,CalculateDatetime(sunset,-2),'24:00']
-              ,[CalculateDatetime(sunrise,1),CalculateDatetime(sunrise,-1),'10:00','12:00',CalculateDatetime(sunset,4),CalculateDatetime(sunset,0.5),CalculateDatetime(sunset,-2),CalculateDatetime(sunset,-4),'24:00'],['24:00']],
-          6: [[CalculateDatetime(sunrise,1),CalculateDatetime(sunrise,-3),'10:00','12:00',CalculateDatetime(sunset,4),CalculateDatetime(sunset,0.5),CalculateDatetime(sunset,-1),'24:00']
-              ,[sunrise,sunset,'24:00'],[CalculateDatetime(sunrise,2),sunrise,'12:00',CalculateDatetime(sunset,2),sunset,CalculateDatetime(sunset,-2),'24:00']
-              ,[CalculateDatetime(sunrise,1),CalculateDatetime(sunrise,-3),'10:00','12:00',CalculateDatetime(sunset,4),CalculateDatetime(sunset,0.5),CalculateDatetime(sunset,-1),'24:00'],['24:00']], 
+          1: [['24:00'],[sunrise,sunset,'24:00']
+              ,[CalculateDatetime(sunrise,2),sunrise,'12:00',CalculateDatetime(sunset,2),sunset,CalculateDatetime(sunset,-2),'24:00'],['24:00'],['24:00']],
+          2: [['24:00'],[sunrise,sunset,'24:00']
+              ,[CalculateDatetime(sunrise,2),sunrise,'12:00',CalculateDatetime(sunset,2),sunset,CalculateDatetime(sunset,-2),'24:00'],['24:00'],['24:00']],
+          3: [['24:00'],[sunrise,sunset,'24:00']
+              ,[CalculateDatetime(sunrise,2),sunrise,'12:00',CalculateDatetime(sunset,2),sunset,CalculateDatetime(sunset,-2),'24:00'],['24:00'],['24:00']],
+          4: [['24:00'],[sunrise,sunset,'24:00']
+              ,[CalculateDatetime(sunrise,2),sunrise,'12:00',CalculateDatetime(sunset,2),sunset,CalculateDatetime(sunset,-2),'24:00'],['24:00'],['24:00']],
+          5: [['24:00'],[sunrise,sunset,'24:00']
+              ,[CalculateDatetime(sunrise,2),sunrise,'12:00',CalculateDatetime(sunset,2),sunset,CalculateDatetime(sunset,-2),'24:00'],['24:00'],['24:00']],
+          6: [['24:00'],[sunrise,sunset,'24:00']
+              ,[CalculateDatetime(sunrise,2),sunrise,'12:00',CalculateDatetime(sunset,2),sunset,CalculateDatetime(sunset,-2),'24:00'],['24:00'],['24:00']],
     }
 
     ### 조정하고 싶은 조건들(어떤 월을 바꿀 것인지, category, setpoint 조정값)
-    adjustments = [
-          (list(range(1,7)),0,8),
-          (list(range(1,7)),3,1),
-    ]
+#     adjustments = [
+#           (list(range(1,7)),3,-2), # 이 경우는 1-6월까지, venting[3], -2도
+#     ]
 
     def adjust_setpoints(adjustments):
        for adj in adjustments:
@@ -107,7 +108,7 @@ def month_schedule_setpoints(mon, sunrise, sunset): # 각 월별 setpoint와 시
        return setpoint_data
     
     ### setpoint를 조정 실행
-    setpoint_data = adjust_setpoints(adjustments)
+#     setpoint_data = adjust_setpoints(adjustments)
 
     return setpoint_data[mon], times_data[mon]
         
